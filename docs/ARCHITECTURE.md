@@ -1,93 +1,94 @@
-# 系統架構文件 (Architecture) - 食譜收藏夾系統
+# 系統架構設計文件 (ARCHITECTURE) - 食譜收藏夾系統
 
 ## 1. 技術架構說明
 
-本專案採用傳統的伺服器端渲染（Server-Side Rendering, SSR）架構進行開發，由後端框架一併處理業務邏輯與畫面渲染（不採用前後端分離）。
+本系統基於 Python 的 **Flask** 框架進行開發，並採用伺服器端渲染 (Server-Side Rendering, SSR) 的方式，讓所有的頁面產製與核心邏輯皆在後端統一處理與產出。
+*   **後端框架 (Flask)**：輕量、具有高擴展性，能快速搭建應用程式，非常適合開發中小型 Web 專案。
+*   **視圖模板 (Jinja2)**：與 Flask 緊密整合的模板語言。負責把後端處理好的資料庫內容，動態結合 HTML 直接發送給瀏覽器。因此，不需要建立複雜的前後端分離 API，大幅降低開發初期的時間成本。
+*   **資料庫 (SQLite)**：以檔案的輕量級格式來儲存關聯式資料，符合 MVP（最小可行性產品）階段的需求，本地端開發、備份皆非常簡單。
+*   **前端設計 (Vanilla CSS + JS)**：不依賴如 React 或 Vue 的大型框架。透過手寫 CSS 處理介面外觀，並用基本的 JavaScript 強化前端操作體驗（如按鈕互動、表單基本檢查）。
 
-### **1.1 選用技術與原因**
-- **後端框架：Python + Flask**
-  - **原因**：Flask 是一套輕量級且靈活的框架，非常適合快速開發 MVP（最小可行產品）與中小型專案。它能輕鬆處理 HTTP 請求及路由配置。
-- **模板引擎：Jinja2**
-  - **原因**：與 Flask 高度整合，能夠在伺服器端將資料庫查詢到的變數（如食譜清單）直接注入到 HTML 頁面中，這對於 SEO 非常有利且易於開發上手。
-- **資料庫：SQLite**
-  - **原因**：設定簡單，無需另外架設與維護資料庫伺服器，資料是以單一檔案（如 `database.db`）的形式存在這台主機上，非常輕量，適合開發初期與小規模資料量。
-
-### **1.2 Flask MVC 模式說明**
-雖然 Flask 本身沒有強制的目錄架構，但我們依循經典的 MVC（Model-View-Controller）模式概念來組織程式碼：
-- **Model（模型）**：負責與 SQLite 資料庫溝通，處理資料的存取與商業邏輯（例如：寫入新食譜、查詢包含特定食材的食譜）。
-- **View（視圖）**：負責使用者介面（UI）的呈現。在此系統中對應為放在 `templates/` 資料夾裡的 Jinja2 HTML 檔案。
-- **Controller（控制器）**：在這裡對應為 Flask 的 **Routes（路由）**，負責接收使用者的請求、向 Model 要求資料處理，接著將資料丟給 View (Jinja2) 去渲染，最終組成完整的網頁回傳。
+### Flask MVC 對應模式
+本專案在實作切分上，遵循 MVC (Model-View-Controller) 架構精神：
+*   **Model (模型)**：負責定義資料的結構與欄位，以及與資料庫直接進行讀寫操作（包括：使用者資料表、食譜資料表、與多對多的食材關聯）。對應專案的 `models/` 目錄。
+*   **View (視圖)**：負責呈現給使用者操作、閱讀的視覺介面。在此專案中對應到 `templates/` 目錄內的 `.html` 檔案 (透過 Jinja2 渲染)。
+*   **Controller (控制器)**：負責接收外界網頁發送的 HTTP Request (如點擊搜尋、送出表單)，再透過呼叫 Model 層來處理資料，接著傳遞回 View 介面。對應專案中各個 `routes/` 檔案內的 API 與路由 (@app.route)。
 
 ---
 
 ## 2. 專案資料夾結構
 
-以下是本專案的目錄結構初步規劃，將模組化拆分邏輯與視圖：
+為保持程式碼的條理分明與後續容易延伸，我們設計以下資料夾結構：
 
 ```text
-web_app_development/
-├── app.py                 # 應用程式入口點，負責啟動 Flask 伺服器
-├── requirements.txt       # Python 套件相依清單 (開發時產出)
-├── instance/              # 不進入版控的特定環境檔案
-│   └── database.db        # SQLite 資料庫儲存檔
-├── app/                   # 核心專案內文
-│   ├── __init__.py        # 建立 Flask App、註冊設定檔
-│   ├── models/            # 【Model】資料庫結構定義
-│   │   ├── __init__.py
-│   │   ├── user.py        # 用戶資料表模型
-│   │   └── recipe.py      # 食譜、食材、關聯表模型
-│   ├── routes/            # 【Controller】路由處置
-│   │   ├── __init__.py
-│   │   ├── auth.py        # 註冊、登入與權限路由
-│   │   └── recipe.py      # 食譜 CRUD 及查詢路由
-│   ├── templates/         # 【View】Jinja2 HTML 模板
-│   │   ├── base.html      # 共用基本排版 (含 navbar, footer 等)
-│   │   ├── index.html     # 首頁 (搜尋與展示)
-│   │   ├── auth/          # 用戶相關頁面 (login.html, register.html)
-│   │   └── recipe/        # 食譜相關頁面 (list.html, detail.html, form.html)
-│   └── static/            # 靜態資源檔案
-│       ├── css/
-│       │   └── style.css  # 全站共通樣式
-│       └── js/
-│           └── main.js    # 客製化互動操作
-└── docs/                  # 文件管理
-    ├── PRD.md             # 產品需求文件
-    └── ARCHITECTURE.md    # 系統架構文件 (本檔案)
+recipe_app/
+│
+├── app/                      ← 存放應用程式主體邏輯的目錄
+│   ├── __init__.py           ← 初始化 Flask 實體，並在此註冊各種設定與 Blueprints
+│   ├── models/               ← 資料庫對應的 Model 內容存放區
+│   │   ├── user.py           ← 使用者關聯資料表
+│   │   ├── recipe.py         ← 食譜主體、食材清單、多對多關聯等結構
+│   │   └── database.py       ← 給 SQLite3 或 SQLAlchemy 共用的連線與管理設定
+│   ├── routes/               ← Flask 各項業務與路由規則 (Controller)
+│   │   ├── auth.py           ← 會員註冊、登入登出功能模組
+│   │   ├── recipe.py         ← 處理食譜新增、查詢與多條件食材搜尋等模組
+│   │   └── admin.py          ← 管理員檢視和下架內容等權限模組
+│   ├── templates/            ← Jinja2 網頁模板放置區 (View)
+│   │   ├── base.html         ← 全站共用的佈局版型 (導覽列與頁尾)
+│   │   ├── auth/             ← 登入、註冊表單等登錄畫面
+│   │   ├── recipe/           ← 食譜列表首頁、食譜單一內頁與新增表單
+│   │   └── admin/            ← 後台管理專用介面
+│   └── static/               ← 靜態資源區（瀏覽器直接抓取的檔案）
+│       ├── css/              ← 純手寫 CSS 樣式
+│       ├── js/               ← 瀏覽器端用 JavaScript 檔案
+│       └── images/           ← 備用的圖片存放區 (含使用者上傳儲存的內容)
+│
+├── instance/                 ← 不納入 Git 版控，安全層級較高的運行資料擺放區
+│   └── database.db           ← SQLite 實體資料庫檔案
+│
+├── config.py                 ← 程式全域環境變數及安全 Secret Key 設定檔
+├── run.py                    ← 整個專案程式啟動點
+└── requirements.txt          ← 專案必須要用的 Python 依賴套件表 (Flask 等)
 ```
 
 ---
 
 ## 3. 元件關係圖
 
-以下展示瀏覽器發出請求後，系統內部各個元件如何運作互動：
+以下展示專案在執行時，使用者端至後端的處理互動順序：
 
 ```mermaid
-sequenceDiagram
-    participant Browser as 瀏覽器 (使用者)
-    participant Route as Flask Route (Controller)
-    participant Model as Model (資料與商業邏輯)
-    participant DB as SQLite DB
-    participant Template as Jinja2 Template (View)
-
-    Browser->>Route: 1. 發送請求 (如: 點擊搜索、儲存食譜)
-    Route->>Model: 2. 呼叫模型層處理邏輯
-    Model->>DB: 3. 執行 SQL 存取資料
-    DB-->>Model: 4. 回傳實體資料
-    Model-->>Route: 5. 整理為 Python Dict/Objects 物件
-    Route->>Template: 6. 傳遞給 Jinja2 (呼叫 render_template)
-    Template-->>Route: 7. 渲染為靜態 HTML
-    Route-->>Browser: 8. 回傳 HTTP Response (HTML)
+flowchart TD
+    Browser[使用者的瀏覽器Browser]
+    
+    subgraph Flask Application [Flask 應用程式]
+        Router[Flask 路由 Route / Controller]
+        JinjaTemplate[Jinja2 模板 Template / View]
+        Model[Database 資料庫模型 Model]
+    end
+    
+    DB[(SQLite 資料庫)]
+    
+    Browser -- "1. 送出搜尋多個食材的 Request (GET / POST)" --> Router
+    Router -- "2. 進行業務判斷與呼叫模型" --> Model
+    Model -- "3. 實際對資料庫進行檢索 (SQL)" --> DB
+    DB -- "4. 回傳符合條件的食譜紀錄" --> Model
+    Model -- "5. 將內容封裝回傳" --> Router
+    Router -- "6. 結合結果資料叫用 HTML" --> JinjaTemplate
+    JinjaTemplate -- "7. 渲染生成完整的網頁" --> Browser
 ```
 
 ---
 
 ## 4. 關鍵設計決策
 
-1. **不採用前後端分離架構**
-   - **原因**：為了能快速產出 MVP（Minimum Viable Product）進行驗證，降低專案的複雜度。使用 Flask 與 Jinja2 共構，能節省掉建置前後端通訊 API、跨域（CORS）問題以及撰寫 API 文件的成本。
-2. **採用關聯式資料庫設計**
-   - **原因**：系統的核心需求包含「從食材組合搜尋食譜」。這具備了明顯的「多對多」（Many-to-Many）關聯特性（一個食譜有多種食材，一種食材也能在多個食譜內），關聯式資料庫的 JOIN 查詢效能可以輕鬆處理這種場景。
-3. **區段式藍圖路由開發 (Flask Blueprints)**
-   - **原因**：即便初期的功能只有五項，但為了避免所有邏輯長在 `app.py` 導致過於肥大，我們從第一天就導入 Flask 的 Blueprints 概念。將應用切分「會員系統」(`auth`) 與「主系統」(`recipe`)，讓日後擴充新功能更容易。
-4. **模組化的模板繼承 (Template Inheritance)**
-   - **原因**：將導覽列、樣式檔等共同區塊抽取至 `base.html`，其餘各種頁面繼承後只要填入專屬的 Block 內容。這能極大化減少重複的 HTML 程式碼，如果要調整全站版型（Theme），也只需要修改唯一的基礎模板即可。
+以下為為符合 PRD 需求而訂立的重要設計決策方向：
+
+1.  **無前後端分離設計（降低 MVP 開發複雜度）**
+    *   **原因**：在此階段 (MVP) 首重驗證商業邏輯與核心功能的實作可行性。採取 Jinja2 進行一體的 HTML 畫面伺服端渲染，團隊可以省去撰寫各種規格嚴謹之 RESTful API 與處理前端狀態庫之門檻，將專注力放在「會員」與「食材搜尋關聯」上。
+2.  **安全性全面防堵（密碼防護與過濾不當輸出）**
+    *   **原因**：用戶若需註冊個人帳號，不能明文存放密碼，為遵循資訊安全最佳實踐必須導入如 `bcrypt` 來進行不可逆的雜湊加鹽處理。此外，對於 PRD 中要求的表單內容輸入防護，採用 Jinja2 本身內建的強大 Escaping 排版與嚴謹的資料庫預句處理 (Prepared Statements 或 ORM)，可直接免除大量的 SQL Injection 及 XSS 攻擊的威脅。
+3.  **多對多食材關聯設計與結構最佳化**
+    *   **原因**：核心功能需支援「透過多樣食材篩選食譜」。傳統的單一字串模糊查詢會造成極差的匹配效能。於是我們在資料庫設計端會採取 `食譜(Recipe)` 與 `食材(Ingredient)` 分開建立，中間運用 `Recipe_Ingredient_Map` 對應表的「多對多 (Many-to-Many)」關聯。即使需要擴增幾千筆食材組合查詢，也能順利被 SQLite 單單用優化過的語法執行出來。
+4.  **採用 Blueprint 路由模組化功能**
+    *   **原因**：因為專案系統裡，明顯區分出了一般使用者認證 (`auth`)、資料核心業務 (`recipe`) 與特殊權限操作 (`admin`) 三條截然不同的線頭。使用 Flask 提供的 `Blueprint` 功能來做架構上的切分，可以降低各路由之間的依賴程度，未來新增需求時不怕會導致整個控制器大亂。
